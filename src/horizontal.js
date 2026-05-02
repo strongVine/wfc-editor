@@ -307,6 +307,26 @@
   }
 
   // ============================================================
+  // Внешний API для других вкладок
+  // ------------------------------------------------------------
+  // Вкладка «Превью» редактирует тот же файл через эти точки. По сути
+  // переиспользует уже существующий путь правки бита: симметрия,
+  // dirty-флаг, очистка валидации и re-render горизонтальной таблицы
+  // делаются ровно так же, как при клике в самой горизонтали.
+  // ============================================================
+  W.horizontalApi = {
+    editBit(A, d, B, r) {
+      if (states.length === 0) return false;
+      if (A < 0 || A >= states.length) return false;
+      if (B < 0 || B >= states.length) return false;
+      if (d < 0 || d > 3) return false;
+      if (r < 0 || r >= W.BITS) return false;
+      onBitClick(A, d, B, r);
+      return true;
+    },
+  };
+
+  // ============================================================
   // Init
   // ============================================================
   W.initHorizontal = function () {
@@ -324,8 +344,11 @@
       renderMatrix();
     });
 
+    // Ctrl+S работает и в горизонтали, и в превью — превью редактирует
+    // тот же файл, что и горизонталь, поэтому отдельный хоткей не нужен.
     document.addEventListener('keydown', (e) => {
-      if (W.getCurrentMode() !== 'horizontal') return;
+      const mode = W.getCurrentMode();
+      if (mode !== 'horizontal' && mode !== 'preview') return;
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (currentPath) saveFile();

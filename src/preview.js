@@ -1,11 +1,14 @@
 // ============================================================
-// preview.js — экспериментальный режим «Превью».
-// Read-only визуализация: пользователь выбирает состояние A,
+// preview.js — режим «Превью».
+// Визуализация и редактирование. Пользователь выбирает состояние A,
 // программа рисует крест из 4 горизонтальных сторон. Для каждой
-// стороны d показываются все N состояний; те B, у которых есть
-// валидный поворот в states[A].M[d][B], рисуются с поворотом
-// r·90° (все валидные r — в одной ячейке). Несоединяющиеся —
-// приглушены.
+// стороны d показываются все N состояний; для каждого B рисуются
+// все 4 поворота r∈{0..3} — цветной если bitVal(M[A][d][B], r)===1,
+// иначе приглушённый. Клик по любому из 4 глифов в боковой ячейке
+// переключает соответствующий бит — редактирование делегируется
+// в горизонтальный режим, который и хранит файл (см. WFC.horizontalApi).
+// Симметрия §7 проставляется автоматически — это та же кнопка-в-нибл,
+// просто визуализированная как сетка тайлов.
 //
 // Файл берётся из вкладки «Горизонталь» через WFC.fileBus.
 // ============================================================
@@ -118,8 +121,12 @@
   // ----------------------------------------------------------------
   // Одна ячейка стороны: всегда 4 копии состояния B (по одной на
   // каждый поворот r∈{0..3}). Копия цветная, если bitVal(nibble,r)===1;
-  // иначе — приглушённая (серая). Состояния, не включённые в фильтр,
-  // в эту функцию не попадают — они отсеиваются на уровне выше.
+  // иначе — приглушённая (серая). Каждый глиф кликабелен — клик
+  // переключает свой бит в states[A].M[d][B] @ r через
+  // W.horizontalApi.editBit (там же ставится зеркальный бит §7,
+  // выставляется dirty и перерендеривается горизонтальная таблица).
+  // Состояния, не включённые в фильтр, в эту функцию не попадают —
+  // они отсеиваются на уровне выше.
   // ----------------------------------------------------------------
   function renderCell(A, d, B) {
     const cell = document.createElement('div');
@@ -135,24 +142,38 @@
     for (let r = 0; r < W.BITS; r++) {
       const on = W.bitVal(nibble, r);
       if (on) activeRotations.push(r);
-      stack.appendChild(W.makeStateGlyph({
+      const glyph = W.makeStateGlyph({
         jsonPath: snap.path,
         name: Bstate.name,
         rotation: r,
         dim: !on,
         sizeClass: 'sz-sm',
-      }));
+        extraClass: 'preview-edit',
+      });
+      glyph.dataset.a = A;
+      glyph.dataset.d = d;
+      glyph.dataset.b = B;
+      glyph.dataset.r = r;
+      glyph.title = Bstate.name + ' · ' + (r * 90) + '° · ' + (on ? 'выключить' : 'включить');
+      glyph.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        onGlyphClick(A, d, B, r);
+      });
+      stack.appendChild(glyph);
     }
 
     if (activeRotations.length === 0) {
       cell.classList.add('dim');
-      cell.title = Bstate.name + ' — нет соединения';
-    } else {
-      cell.title = Bstate.name + ' — повороты: ' + activeRotations.map(r => (r * 90) + '°').join(', ');
     }
 
     cell.appendChild(stack);
     return cell;
+  }
+
+  function onGlyphClick(A, d, B, r) {
+    if (!W.horizontalApi || typeof W.horizontalApi.editBit !== 'function') return;
+    const ok = W.horizontalApi.editBit(A, d, B, r);
+    if (ok) renderPreview();
   }
 
   function renderSidePanel(A, side) {
