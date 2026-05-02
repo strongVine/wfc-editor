@@ -11,6 +11,7 @@
   let states = [];
   let collapsed = [];
   let currentPath = null;
+  let currentMask = null;  // completenessMask из файла; редактор хранит её как непрозрачные данные
   let dirty = false;
   let validation = null;
 
@@ -108,15 +109,18 @@
       });
       header.appendChild(chev);
 
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'statename';
-      nameInput.value = states[a].name;
-      nameInput.addEventListener('input', (e) => {
-        states[a].name = e.target.value;
-        setDirty(true);
+      // Иконка (если есть) + редактируемое имя — фабрика лежит в main.js
+      const stateIdx = a;
+      const labelEl = W.makeStateLabel({
+        jsonPath: currentPath,
+        name: states[a].name,
+        editable: true,
+        onChange: (newName) => {
+          states[stateIdx].name = newName;
+          setDirty(true);
+        },
       });
-      header.appendChild(nameInput);
+      header.appendChild(labelEl);
 
       const summary = document.createElement('span');
       summary.className = 'state-summary';
@@ -140,7 +144,12 @@
       thr.appendChild(corner);
       for (let b = 0; b < states.length; b++) {
         const th = document.createElement('th');
-        th.textContent = states[b].name;
+        // Шапка колонок — readonly. Иконка если есть, иначе текст.
+        th.appendChild(W.makeStateLabel({
+          jsonPath: currentPath,
+          name: states[b].name,
+          editable: false,
+        }));
         thr.appendChild(th);
       }
       thead.appendChild(thr);
@@ -194,7 +203,11 @@
       if (!selected) return;
       const path = typeof selected === 'string' ? selected : selected.path;
       const text = await W.tauri.readTextFile(path);
-      states = W.parseProjectJson(text);
+      const parsed = W.parseProjectJson(text);
+      if (currentPath) W.releaseIconCache(currentPath);
+      await W.scanIconFolder(path);
+      states = parsed.states;
+      currentMask = parsed.completenessMask;
       collapsed = new Array(states.length).fill(false);
       currentPath = path;
       dirty = false;
@@ -211,7 +224,7 @@
   async function saveFile() {
     if (!currentPath) return saveFileAs();
     try {
-      await W.tauri.writeTextFile(currentPath, W.serializeProjectJson(states));
+      await W.tauri.writeTextFile(currentPath, W.serializeProjectJson(states, currentMask));
       setDirty(false);
     } catch (err) {
       console.error(err);
@@ -226,9 +239,16 @@
         defaultPath: currentPath || 'matrix.json'
       });
       if (!path) return;
-      await W.tauri.writeTextFile(path, W.serializeProjectJson(states));
+      const mask = currentMask || W.makeEmptyCompletenessMask();
+      await W.tauri.writeTextFile(path, W.serializeProjectJson(states, mask));
+      if (path !== currentPath) {
+        if (currentPath) W.releaseIconCache(currentPath);
+        await W.scanIconFolder(path);
+      }
       currentPath = path;
+      currentMask = mask;
       setDirty(false);
+      renderMatrix();
     } catch (err) {
       console.error(err);
       setStatus('Ошибка сохранения: ' + err.message, 'bad');

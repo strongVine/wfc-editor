@@ -392,3 +392,47 @@ table.mtx th.dir-label {
   font-size: 12px;
   font-style: italic;
 }
+
+
+/* ===== Иконки состояний =====
+   Маленькие, чтобы не раздувать UI:
+   - в шапке колонок (<th>) занимают вместо текста
+   - в заголовке стейта стоят слева от input'а
+*/
+.state-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+  /* pixel-art иконки не должны размазываться при scale */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Иконка в th колонок: уменьшаем минимальную ширину колонки чтобы иконка
+   не растягивала таблицу как текст имени */
+table.mtx th .state-icon {
+  width: 32px;
+  height: 32px;
+}
+
+/* В шапке стейта иконка чуть крупнее текста input'а, но не больше высоты строки */
+.stateheader .state-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stateheader .header-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Текстовое имя в шапке колонок, когда иконки нет — наследует прежний стиль th */
+table.mtx th .state-name-text {
+  display: inline-block;
+}

@@ -17,6 +17,7 @@
       states: [],
       collapsed: [],
       currentPath: null,
+      completenessMask: null,
       dirty: false,
       editedDir: role === 'upper' ? W.D_DOWN : W.D_UP,
     };
@@ -161,15 +162,17 @@
       });
       header.appendChild(chev);
 
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'statename';
-      nameInput.value = layer.states[a].name;
-      nameInput.addEventListener('input', (e) => {
-        layer.states[a].name = e.target.value;
-        setDirty(layer, true);
+      const stateIdx = a;
+      const labelEl = W.makeStateLabel({
+        jsonPath: layer.currentPath,
+        name: layer.states[a].name,
+        editable: true,
+        onChange: (newName) => {
+          layer.states[stateIdx].name = newName;
+          setDirty(layer, true);
+        },
       });
-      header.appendChild(nameInput);
+      header.appendChild(labelEl);
 
       const summary = document.createElement('span');
       summary.className = 'state-summary';
@@ -200,7 +203,13 @@
         thr.appendChild(corner);
         for (let b = 0; b < peerN; b++) {
           const th = document.createElement('th');
-          th.textContent = peerLayer.states[b].name;
+          // Шапка колонок — readonly. Иконки берём ИЗ ПАРНОГО слоя
+          // (потому что это его состояния).
+          th.appendChild(W.makeStateLabel({
+            jsonPath: peerLayer.currentPath,
+            name: peerLayer.states[b].name,
+            editable: false,
+          }));
           thr.appendChild(th);
         }
         thead.appendChild(thr);
@@ -265,7 +274,11 @@
       if (!selected) return;
       const path = typeof selected === 'string' ? selected : selected.path;
       const text = await W.tauri.readTextFile(path);
-      layer.states = W.parseProjectJson(text);
+      const parsed = W.parseProjectJson(text);
+      if (layer.currentPath) W.releaseIconCache(layer.currentPath);
+      await W.scanIconFolder(path);
+      layer.states = parsed.states;
+      layer.completenessMask = parsed.completenessMask;
       layer.collapsed = new Array(layer.states.length).fill(false);
       layer.currentPath = path;
       layer.dirty = false;
@@ -282,7 +295,7 @@
   async function saveFile(layer) {
     if (!layer.currentPath) return saveFileAs(layer);
     try {
-      await W.tauri.writeTextFile(layer.currentPath, W.serializeProjectJson(layer.states));
+      await W.tauri.writeTextFile(layer.currentPath, W.serializeProjectJson(layer.states, layer.completenessMask));
       setDirty(layer, false);
     } catch (err) {
       console.error(err);
@@ -297,9 +310,16 @@
         defaultPath: layer.currentPath || (layer.role + '.json')
       });
       if (!path) return;
-      await W.tauri.writeTextFile(path, W.serializeProjectJson(layer.states));
+      const mask = layer.completenessMask || W.makeEmptyCompletenessMask();
+      await W.tauri.writeTextFile(path, W.serializeProjectJson(layer.states, mask));
+      if (path !== layer.currentPath) {
+        if (layer.currentPath) W.releaseIconCache(layer.currentPath);
+        await W.scanIconFolder(path);
+      }
       layer.currentPath = path;
+      layer.completenessMask = mask;
       setDirty(layer, false);
+      renderMatrix();
     } catch (err) {
       console.error(err);
       setStatus('Ошибка сохранения: ' + err.message, 'bad');

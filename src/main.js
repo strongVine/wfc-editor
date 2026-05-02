@@ -7,7 +7,8 @@
   window.WFC = WFC;
 
   const { open, save } = window.__TAURI__.dialog;
-  const { readTextFile, writeTextFile } = window.__TAURI__.fs;
+  const { readTextFile, writeTextFile, readDir, exists } = window.__TAURI__.fs;
+  const { convertFileSrc } = window.__TAURI__.core;
 
   // ============================================================
   // Константы
@@ -28,7 +29,7 @@
   // ============================================================
   // Tauri API
   // ============================================================
-  WFC.tauri = { open, save, readTextFile, writeTextFile };
+  WFC.tauri = { open, save, readTextFile, writeTextFile, readDir, exists, convertFileSrc };
 
   // ============================================================
   // Битовые операции
@@ -56,40 +57,78 @@
 
   // ============================================================
   // Парсинг / сериализация формата проекта
+  // ------------------------------------------------------------
+  // Формат файла:
+  //   {
+  //     "completenessMask": [ "...", x6 строк по 16 hex ],
+  //     "rotationMap":      [ { "name": "...", "rows": [ x6 строк ] }, ... ]
+  //   }
+  // completenessMask — оптимизация движка, редактор её не интерпретирует:
+  // читает, хранит как есть и пишет обратно без изменений.
   // ============================================================
+
+  function parseHexRow(row, ctx) {
+    if (typeof row !== 'string' || row.length !== WFC.NIBBLES_PER_ROW) {
+      throw new Error(ctx + ': строка должна быть ' + WFC.NIBBLES_PER_ROW + ' hex-символов');
+    }
+    return Array.from(row).map(ch => {
+      const v = parseInt(ch, 16);
+      if (Number.isNaN(v)) throw new Error(ctx + ': невалидный hex "' + ch + '"');
+      return v;
+    });
+  }
+
+  function validateHexTable(rows, ctx) {
+    if (!Array.isArray(rows) || rows.length !== WFC.DIR_COUNT) {
+      throw new Error(ctx + ': ожидается массив из ' + WFC.DIR_COUNT + ' строк');
+    }
+    rows.forEach((row, d) => {
+      parseHexRow(row, ctx + ', направление ' + d);
+    });
+    return rows;
+  }
+
   WFC.parseProjectJson = function (text) {
     const data = JSON.parse(text);
-    if (!Array.isArray(data)) throw new Error('Корневой JSON должен быть массивом');
-    if (data.length < 1 || data.length > WFC.MAX_STATES) {
-      throw new Error('Состояний должно быть 1..' + WFC.MAX_STATES + ', получено ' + data.length);
+
+    if (Array.isArray(data)) {
+      throw new Error('Старый формат файла (массив на корне) больше не поддерживается. ' +
+        'Ожидается объект { completenessMask, rotationMap }.');
+    }
+    if (typeof data !== 'object' || data === null) {
+      throw new Error('Корневой JSON должен быть объектом');
+    }
+    if (!Array.isArray(data.rotationMap)) {
+      throw new Error('Отсутствует или некорректное поле rotationMap (должно быть массивом)');
+    }
+    if (!Array.isArray(data.completenessMask)) {
+      throw new Error('Отсутствует или некорректное поле completenessMask (должно быть массивом из ' +
+        WFC.DIR_COUNT + ' строк)');
     }
 
-    return data.map((entry, idx) => {
+    const completenessMask = validateHexTable(data.completenessMask, 'completenessMask');
+
+    if (data.rotationMap.length < 1 || data.rotationMap.length > WFC.MAX_STATES) {
+      throw new Error('Состояний должно быть 1..' + WFC.MAX_STATES + ', получено ' + data.rotationMap.length);
+    }
+    const states = data.rotationMap.map((entry, idx) => {
       if (typeof entry.name !== 'string') throw new Error('Состояние ' + idx + ': отсутствует name');
-      if (!Array.isArray(entry.rows) || entry.rows.length !== WFC.DIR_COUNT) {
-        throw new Error('Состояние ' + idx + ': rows должен быть массивом из ' + WFC.DIR_COUNT + ' строк');
-      }
-      const M = entry.rows.map((row, d) => {
-        if (typeof row !== 'string' || row.length !== WFC.NIBBLES_PER_ROW) {
-          throw new Error('Состояние ' + idx + ', направление ' + d + ': строка должна быть ' + WFC.NIBBLES_PER_ROW + ' hex-символов');
-        }
-        return Array.from(row).map(ch => {
-          const v = parseInt(ch, 16);
-          if (Number.isNaN(v)) throw new Error('Состояние ' + idx + ', направление ' + d + ': невалидный hex "' + ch + '"');
-          return v;
-        });
-      });
+      const M = validateHexTable(entry.rows, 'Состояние ' + idx + ', rows')
+        .map((row, d) => parseHexRow(row, 'Состояние ' + idx + ', направление ' + d));
       return { name: entry.name, M };
     });
+
+    return { states, completenessMask };
   };
 
-  WFC.serializeProjectJson = function (states) {
-    const data = states.map(s => ({
-      name: s.name,
-      rows: s.M.map(row =>
-        row.map(n => n.toString(16).toUpperCase()).join('')
-      )
-    }));
+  WFC.serializeProjectJson = function (states, completenessMask) {
+    const data = {
+      completenessMask,
+      rotationMap: states.map(s => ({
+        name: s.name,
+        rows: s.M.map(row => row.map(n => n.toString(16).toUpperCase()).join(''))
+      }))
+    };
     return JSON.stringify(data, null, 2);
   };
 
@@ -99,6 +138,10 @@
       M.push(new Array(WFC.NIBBLES_PER_ROW).fill(0));
     }
     return M;
+  };
+
+  WFC.makeEmptyCompletenessMask = function () {
+    return new Array(WFC.DIR_COUNT).fill('0'.repeat(WFC.NIBBLES_PER_ROW));
   };
 
   // ============================================================
@@ -179,10 +222,133 @@
   };
 
   // ============================================================
-  // Имя файла
+  // Имя файла / пути
   // ============================================================
   WFC.fileName = function (path) {
     return path.replace(/\\/g, '/').split('/').pop();
+  };
+
+  WFC.dirName = function (path) {
+    const p = path.replace(/\\/g, '/');
+    const i = p.lastIndexOf('/');
+    return i >= 0 ? p.substring(0, i) : '';
+  };
+
+  WFC.stripExt = function (fileName) {
+    const i = fileName.lastIndexOf('.');
+    return i > 0 ? fileName.substring(0, i) : fileName;
+  };
+
+  // ============================================================
+  // Система иконок состояний
+  // ------------------------------------------------------------
+  // Соглашение:
+  //   <папка с .json>/icons/<basename без .json>/<state.name>.png
+  //
+  // Кэш — отдельный на каждый открытый файл (ключ = json path).
+  // Сканируем папку один раз при открытии: readDir + map имя→URL.
+  // На рендере иконки берутся из кэша за O(1), без I/O.
+  // ============================================================
+
+  const iconCaches = new Map();
+
+  const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
+
+  function isIconFile(name) {
+    const lo = name.toLowerCase();
+    for (let i = 0; i < ICON_EXTS.length; i++) {
+      if (lo.endsWith(ICON_EXTS[i])) return true;
+    }
+    return false;
+  }
+
+  WFC.scanIconFolder = async function (jsonPath) {
+    const dir = WFC.dirName(jsonPath);
+    const base = WFC.stripExt(WFC.fileName(jsonPath));
+    const folder = dir + '/icons/' + base;
+
+    const cache = { byName: new Map(), folder };
+    iconCaches.set(jsonPath, cache);
+
+    try {
+      const has = await exists(folder);
+      if (!has) return cache;
+      const entries = await readDir(folder);
+      for (const e of entries) {
+        if (!e || !e.name || !e.isFile) continue;
+        if (!isIconFile(e.name)) continue;
+        const stateName = WFC.stripExt(e.name);
+        const filePath = folder + '/' + e.name;
+        const url = convertFileSrc(filePath);
+        cache.byName.set(stateName, url);
+      }
+    } catch (err) {
+      console.warn('scanIconFolder:', err);
+    }
+    return cache;
+  };
+
+  WFC.releaseIconCache = function (jsonPath) {
+    if (jsonPath) iconCaches.delete(jsonPath);
+  };
+
+  WFC.getIconUrl = function (jsonPath, stateName) {
+    if (!jsonPath) return null;
+    const cache = iconCaches.get(jsonPath);
+    if (!cache) return null;
+    return cache.byName.get(stateName) || null;
+  };
+
+  // ------------------------------------------------------------
+  // Фабрика UI-метки состояния.
+  // editable=true  — в заголовке стейта: иконка (если есть) + редактируемое имя.
+  // editable=false — в шапке колонок таблицы: иконка ИЛИ текст.
+  // ------------------------------------------------------------
+  WFC.makeStateLabel = function (opts) {
+    const { jsonPath, name, editable, onChange } = opts;
+    const url = WFC.getIconUrl(jsonPath, name);
+
+    if (!editable) {
+      if (url) {
+        const img = document.createElement('img');
+        img.className = 'state-icon';
+        img.src = url;
+        img.alt = name;
+        img.title = name;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.draggable = false;
+        return img;
+      }
+      const span = document.createElement('span');
+      span.className = 'state-name-text';
+      span.textContent = name;
+      return span;
+    }
+
+    const wrap = document.createElement('span');
+    wrap.className = 'state-label-wrap';
+
+    if (url) {
+      const img = document.createElement('img');
+      img.className = 'state-icon header-icon';
+      img.src = url;
+      img.alt = name;
+      img.title = name;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.draggable = false;
+      wrap.appendChild(img);
+    }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'statename';
+    input.value = name;
+    input.addEventListener('input', (e) => onChange && onChange(e.target.value));
+    wrap.appendChild(input);
+
+    return wrap;
   };
 
   // ============================================================

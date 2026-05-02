@@ -10,10 +10,20 @@
     "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
+    "fs:allow-read-dir",
+    "fs:allow-exists",
     "fs:scope-home",
     "fs:scope-download",
     "fs:scope-document",
     "fs:scope-desktop",
-    "fs:scope-resource"
+    "fs:scope-resource",
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "**" }]
+    }
   ]
 }
