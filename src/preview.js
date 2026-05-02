@@ -58,27 +58,23 @@
     }
     prevPath = snap.path;
     prevLen = n;
-
-    if (enabled.size > 0 && !enabled.has(selectedIdx)) {
-      selectedIdx = Math.min(...enabled);
-    }
   }
 
   // ----------------------------------------------------------------
-  // Селектор состояний: два ряда — выбор центрального A (radio)
-  // и фильтр видимости (checkbox).
+  // Селектор состояний: два независимых ряда.
+  //   Ряд 1 — выбор центрального A. Всегда все N плиток.
+  //   Ряд 2 — фильтр для боковых сторон. Off-плитка → состояние
+  //           рисуется приглушённым в боковых ячейках, как и
+  //           несвязные. Ряд 1 и центр не трогает.
   // ----------------------------------------------------------------
   function renderSelector() {
     const root = $('p-selector');
     root.innerHTML = '';
     if (!snap || !snap.states || snap.states.length === 0) return;
 
-    // Ряд 1: выбор центрального A. Скрываем выключенные — они полностью
-    // исчезают из превью.
     const radioRow = document.createElement('div');
     radioRow.className = 'preview-radio';
     snap.states.forEach((s, idx) => {
-      if (!enabled.has(idx)) return;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'preview-pick' + (idx === selectedIdx ? ' selected' : '');
@@ -96,20 +92,18 @@
     });
     root.appendChild(radioRow);
 
-    // Ряд 2: чекбоксы видимости. Показываем ВСЕ состояния (иначе
-    // выключенные нельзя вернуть). Off-плитки приглушены.
     const visRow = document.createElement('div');
     visRow.className = 'preview-visibility';
     const lbl = document.createElement('span');
     lbl.className = 'preview-visibility-label';
-    lbl.textContent = 'Видимость:';
+    lbl.textContent = 'На сторонах:';
     visRow.appendChild(lbl);
     snap.states.forEach((s, idx) => {
       const on = enabled.has(idx);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'preview-check' + (on ? '' : ' off');
-      btn.title = s.name + (on ? ' — показывать' : ' — скрыто');
+      btn.title = s.name + (on ? ' — показывать на сторонах' : ' — приглушить на сторонах');
       btn.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
         name: s.name,
@@ -118,11 +112,6 @@
       btn.addEventListener('click', () => {
         if (enabled.has(idx)) enabled.delete(idx);
         else enabled.add(idx);
-        // Если выключили текущий A — переключимся на первый видимый
-        // (а если включили — selectedIdx остаётся валидным).
-        if (enabled.size > 0 && !enabled.has(selectedIdx)) {
-          selectedIdx = Math.min(...enabled);
-        }
         renderPreview();
       });
       visRow.appendChild(btn);
@@ -133,8 +122,9 @@
   // ----------------------------------------------------------------
   // Одна ячейка стороны: состояние B относительно выбранного A
   // в направлении d.
-  //   nibble = 0           → одна dim-копия B
-  //   иначе для каждого r,r∈валидных битов → копия B с rotate(r·90°)
+  //   nibble = 0 ИЛИ B выключен в фильтре → одна приглушённая копия
+  //   иначе                                → копия B на каждый r,
+  //                                          где бит nibble выставлен.
   // ----------------------------------------------------------------
   function renderCell(A, d, B) {
     const cell = document.createElement('div');
@@ -142,11 +132,12 @@
 
     const Bstate = snap.states[B];
     const nibble = snap.states[A].M[d][B];
+    const muted = !enabled.has(B) || nibble === 0;
 
     const stack = document.createElement('div');
     stack.className = 'preview-glyph-stack';
 
-    if (nibble === 0) {
+    if (muted) {
       cell.classList.add('dim');
       stack.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
@@ -154,7 +145,7 @@
         dim: true,
         sizeClass: 'sz-sm',
       }));
-      cell.title = Bstate.name + ' — нет соединения';
+      cell.title = Bstate.name + (nibble === 0 ? ' — нет соединения' : ' — скрыто фильтром');
     } else {
       const rotations = [];
       for (let r = 0; r < W.BITS; r++) {
@@ -188,7 +179,6 @@
     const cells = document.createElement('div');
     cells.className = 'preview-side-cells';
     for (let B = 0; B < snap.states.length; B++) {
-      if (!enabled.has(B)) continue;
       cells.appendChild(renderCell(A, side.d, B));
     }
     panel.appendChild(cells);
@@ -225,16 +215,6 @@
       setStatus('Файл не открыт');
       return;
     }
-
-    if (enabled.size === 0) {
-      empty.style.display = '';
-      empty.textContent = 'Все состояния скрыты — включи хотя бы одно в ряду «Видимость».';
-      grid.style.display = 'none';
-      setStatus(W.fileName(snap.path) + ' · нет видимых состояний');
-      return;
-    }
-
-    if (!enabled.has(selectedIdx)) selectedIdx = Math.min(...enabled);
 
     empty.style.display = 'none';
     grid.style.display = '';
