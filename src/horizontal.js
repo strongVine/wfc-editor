@@ -17,6 +17,12 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Уведомить read-only потребителей (вкладка «Превью») о структурных
+  // изменениях. Имя/биты внутри states видны им по ссылке без re-publish.
+  function publishSnapshot() {
+    W.fileBus.publish({ path: currentPath, states, mask: currentMask });
+  }
+
   // ============================================================
   // Симметрия / валидация
   // ============================================================
@@ -215,6 +221,7 @@
       updateStatus();
       enableButtons(true);
       renderMatrix();
+      publishSnapshot();
     } catch (err) {
       console.error(err);
       setStatus('Ошибка: ' + err.message, 'bad');
@@ -245,10 +252,12 @@
         if (currentPath) W.releaseIconCache(currentPath);
         await W.scanIconFolder(path);
       }
+      const pathChanged = path !== currentPath;
       currentPath = path;
       currentMask = mask;
       setDirty(false);
       renderMatrix();
+      if (pathChanged) publishSnapshot();
     } catch (err) {
       console.error(err);
       setStatus('Ошибка сохранения: ' + err.message, 'bad');
@@ -266,6 +275,7 @@
     setDirty(true);
     updateButtonsState();
     renderMatrix();
+    publishSnapshot();
   }
 
   function removeLastState() {
@@ -276,6 +286,7 @@
     setDirty(true);
     updateButtonsState();
     renderMatrix();
+    publishSnapshot();
   }
 
   function updateButtonsState() {

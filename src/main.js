@@ -300,45 +300,59 @@
   };
 
   // ------------------------------------------------------------
-  // Фабрика UI-метки состояния.
-  // editable=true  — в заголовке стейта: иконка (если есть) + редактируемое имя.
-  // editable=false — в шапке колонок таблицы: иконка ИЛИ текст.
+  // Низкоуровневый билд-блок: иконка состояния (или текстовый фолбэк).
+  // Используется и в makeStateLabel, и во вкладке «Превью».
+  //   rotation: 0..3 — вращение на r·90° через CSS
+  //   dim: bool — приглушённое отображение (нет соединения)
+  //   sizeClass: 'sz-sm' | 'sz-md' | 'sz-lg' (опционально)
   // ------------------------------------------------------------
-  WFC.makeStateLabel = function (opts) {
-    const { jsonPath, name, editable, onChange } = opts;
+  WFC.makeStateGlyph = function (opts) {
+    const { jsonPath, name, rotation, dim, sizeClass, extraClass } = opts;
     const url = WFC.getIconUrl(jsonPath, name);
+    const r = ((rotation | 0) % 4 + 4) % 4;
 
-    if (!editable) {
-      if (url) {
-        const img = document.createElement('img');
-        img.className = 'state-icon';
-        img.src = url;
-        img.alt = name;
-        img.title = name;
-        img.loading = 'lazy';
-        img.decoding = 'async';
-        img.draggable = false;
-        return img;
-      }
-      const span = document.createElement('span');
-      span.className = 'state-name-text';
-      span.textContent = name;
-      return span;
-    }
-
-    const wrap = document.createElement('span');
-    wrap.className = 'state-label-wrap';
+    const cls = ['preview-glyph', 'rot-' + r];
+    if (dim) cls.push('dim');
+    if (sizeClass) cls.push(sizeClass);
+    if (extraClass) cls.push(extraClass);
 
     if (url) {
       const img = document.createElement('img');
-      img.className = 'state-icon header-icon';
+      img.className = cls.concat(['state-icon']).join(' ');
       img.src = url;
       img.alt = name;
       img.title = name;
       img.loading = 'lazy';
       img.decoding = 'async';
       img.draggable = false;
-      wrap.appendChild(img);
+      return img;
+    }
+    const span = document.createElement('span');
+    span.className = cls.concat(['state-name-text']).join(' ');
+    span.textContent = name;
+    span.title = name;
+    return span;
+  };
+
+  // ------------------------------------------------------------
+  // Фабрика UI-метки состояния.
+  // editable=true  — в заголовке стейта: иконка (если есть) + редактируемое имя.
+  // editable=false — в шапке колонок таблицы: иконка ИЛИ текст.
+  // ------------------------------------------------------------
+  WFC.makeStateLabel = function (opts) {
+    const { jsonPath, name, editable, onChange } = opts;
+
+    if (!editable) {
+      return WFC.makeStateGlyph({ jsonPath, name });
+    }
+
+    const wrap = document.createElement('span');
+    wrap.className = 'state-label-wrap';
+
+    if (WFC.getIconUrl(jsonPath, name)) {
+      wrap.appendChild(WFC.makeStateGlyph({
+        jsonPath, name, extraClass: 'header-icon',
+      }));
     }
 
     const input = document.createElement('input');
@@ -352,16 +366,34 @@
   };
 
   // ============================================================
+  // Шина данных файла (для read-only потребителей вроде «Превью»)
+  // states пробрасывается по ссылке — мутации видны без re-publish.
+  // publish() нужен для структурных событий (open / save-as path /
+  // add / remove state).
+  // ============================================================
+  WFC.fileBus = (function () {
+    const subs = new Set();
+    let snap = null; // { path, states, mask }
+    return {
+      publish(s) { snap = s; subs.forEach(cb => { try { cb(snap); } catch (e) { console.error(e); } }); },
+      get() { return snap; },
+      subscribe(cb) { subs.add(cb); return () => subs.delete(cb); },
+    };
+  })();
+
+  // ============================================================
   // Текущий режим (для горячих клавиш)
   // ============================================================
   let currentMode = 'horizontal';
   WFC.getCurrentMode = function () { return currentMode; };
 
-  WFC.setupTabs = function () {
+  WFC.setupTabs = function (opts) {
+    const onActivate = opts && opts.onActivate;
     const tabs = document.querySelectorAll('.tab');
     const panes = {
       horizontal: document.getElementById('pane-horizontal'),
       vertical: document.getElementById('pane-vertical'),
+      preview: document.getElementById('pane-preview'),
     };
 
     tabs.forEach(tab => {
@@ -369,9 +401,10 @@
         const mode = tab.dataset.mode;
         tabs.forEach(t => t.classList.toggle('active', t === tab));
         for (const k in panes) {
-          panes[k].style.display = (k === mode) ? '' : 'none';
+          if (panes[k]) panes[k].style.display = (k === mode) ? '' : 'none';
         }
         currentMode = mode;
+        if (onActivate) onActivate(mode);
       });
     });
   };
