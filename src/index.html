@@ -16,6 +16,7 @@
     <div class="tabs">
       <button class="tab active" data-mode="horizontal">Горизонталь</button>
       <button class="tab" data-mode="vertical">Вертикаль</button>
+      <button class="tab" data-mode="preview">Превью</button>
     </div>
 
     <!-- ===== ГОРИЗОНТАЛЬНЫЙ РЕЖИМ ===== -->
@@ -78,17 +79,38 @@
         <div class="empty-hint">Открой верхний и нижний файлы матриц.</div>
       </div>
     </div>
+
+    <!-- ===== ПРЕВЬЮ (read-only, файл из «Горизонтали») ===== -->
+    <div class="section mode-pane" id="pane-preview" style="display:none">
+      <div class="actions">
+        <span class="status" id="p-status">Файл не открыт</span>
+      </div>
+      <div class="legend">
+        Выбери состояние — увидишь, кто к нему пристыковывается с 4 сторон.
+        Повороты соединяющихся тайлов — реальные (CSS rotate r·90°),
+        несоединяющиеся приглушены.
+      </div>
+      <div id="p-empty" class="empty-hint">Открой файл во вкладке «Горизонталь».</div>
+      <div id="p-selector" class="preview-selector"></div>
+      <div id="p-grid" class="preview-grid"></div>
+    </div>
   </div>
 
   <!-- Порядок важен: main.js определяет window.WFC, остальные его расширяют -->
   <script src="main.js"></script>
   <script src="horizontal.js"></script>
   <script src="vertical.js"></script>
+  <script src="preview.js"></script>
   <script>
-    // Bootstrap после того как все три файла отработали
-    WFC.setupTabs();
+    // Bootstrap после того как все четыре файла отработали
+    WFC.setupTabs({
+      onActivate: (mode) => {
+        if (mode === 'preview') WFC.previewOnTabActivate();
+      },
+    });
     WFC.initHorizontal();
     WFC.initVertical();
+    WFC.initPreview();
   </script>
 </body>
 </html>

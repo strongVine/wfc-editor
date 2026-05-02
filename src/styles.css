@@ -436,3 +436,146 @@ table.mtx th .state-icon {
 table.mtx th .state-name-text {
   display: inline-block;
 }
+
+/* ===== Preview tab =====
+   Крест из 4 сторон вокруг выбранного состояния.
+   Иконки повёрнуты CSS-rotate; несоединяющиеся приглушены. */
+.preview-glyph {
+  display: inline-block;
+  vertical-align: middle;
+  transition: transform 0.1s;
+}
+
+.preview-glyph.rot-1 { transform: rotate(90deg); }
+.preview-glyph.rot-2 { transform: rotate(180deg); }
+.preview-glyph.rot-3 { transform: rotate(270deg); }
+
+.preview-glyph.dim {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+
+/* Размеры — для img.state-icon перекрываем дефолт 32×32 двойной
+   специфичностью (две классы), а для текстовых фолбэков задаём
+   line-height. */
+img.preview-glyph.sz-sm { width: 24px; height: 24px; }
+img.preview-glyph.sz-md { width: 32px; height: 32px; }
+img.preview-glyph.sz-lg { width: 64px; height: 64px; }
+
+/* Текстовый фолбэк рисуется как «бейдж» только внутри превью —
+   в шапке колонок горизонтали span остаётся без рамки (без sz-*). */
+span.preview-glyph.sz-sm { font-size: 11px; padding: 2px 4px; min-width: 24px; text-align: center; }
+span.preview-glyph.sz-md { font-size: 12px; padding: 3px 6px; min-width: 32px; text-align: center; }
+span.preview-glyph.sz-lg { font-size: 16px; padding: 6px 10px; min-width: 64px; text-align: center; }
+
+span.preview-glyph.sz-sm,
+span.preview-glyph.sz-md,
+span.preview-glyph.sz-lg {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+/* Селектор состояний над крестом */
+.preview-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 16px;
+}
+
+.preview-pick {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: auto;
+  padding: 4px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-pick.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Крест */
+.preview-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas:
+    ".    back   ."
+    "left center right"
+    ".    front  .";
+  gap: 12px;
+  align-items: center;
+  justify-items: center;
+  padding: 16px 8px;
+}
+
+.preview-side {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  padding: 8px 10px;
+  min-width: 120px;
+  max-width: 100%;
+}
+
+.preview-side-label {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-family: 'SF Mono', Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.preview-side-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preview-cell {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  padding: 4px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.preview-cell.dim {
+  border-color: transparent;
+  background: transparent;
+}
+
+.preview-glyph-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.preview-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  min-width: 96px;
+}
+
+.preview-center-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: 'SF Mono', Consolas, monospace;
+}
