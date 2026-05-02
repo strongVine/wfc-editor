@@ -120,11 +120,9 @@
   }
 
   // ----------------------------------------------------------------
-  // Одна ячейка стороны: состояние B относительно выбранного A
-  // в направлении d.
-  //   nibble = 0 ИЛИ B выключен в фильтре → одна приглушённая копия
-  //   иначе                                → копия B на каждый r,
-  //                                          где бит nibble выставлен.
+  // Одна ячейка стороны: всегда 4 копии состояния B (по одной на
+  // каждый поворот r∈{0..3}). Копия цветная, если bitVal(nibble,r)===1
+  // и B включён в фильтре; иначе — приглушённая (серая).
   // ----------------------------------------------------------------
   function renderCell(A, d, B) {
     const cell = document.createElement('div');
@@ -132,34 +130,29 @@
 
     const Bstate = snap.states[B];
     const nibble = snap.states[A].M[d][B];
-    const muted = !enabled.has(B) || nibble === 0;
+    const filteredOut = !enabled.has(B);
 
     const stack = document.createElement('div');
     stack.className = 'preview-glyph-stack';
 
-    if (muted) {
-      cell.classList.add('dim');
+    const activeRotations = [];
+    for (let r = 0; r < W.BITS; r++) {
+      const on = !filteredOut && W.bitVal(nibble, r);
+      if (on) activeRotations.push(r);
       stack.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
         name: Bstate.name,
-        dim: true,
+        rotation: r,
+        dim: !on,
         sizeClass: 'sz-sm',
       }));
-      cell.title = Bstate.name + (nibble === 0 ? ' — нет соединения' : ' — скрыто фильтром');
+    }
+
+    if (activeRotations.length === 0) {
+      cell.classList.add('dim');
+      cell.title = Bstate.name + (filteredOut ? ' — скрыто фильтром' : ' — нет соединения');
     } else {
-      const rotations = [];
-      for (let r = 0; r < W.BITS; r++) {
-        if (W.bitVal(nibble, r)) rotations.push(r);
-      }
-      rotations.forEach(r => {
-        stack.appendChild(W.makeStateGlyph({
-          jsonPath: snap.path,
-          name: Bstate.name,
-          rotation: r,
-          sizeClass: 'sz-sm',
-        }));
-      });
-      cell.title = Bstate.name + ' — повороты: ' + rotations.map(r => (r * 90) + '°').join(', ');
+      cell.title = Bstate.name + ' — повороты: ' + activeRotations.map(r => (r * 90) + '°').join(', ');
     }
 
     cell.appendChild(stack);
