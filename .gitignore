@@ -1,0 +1,30 @@
+﻿# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+dist-ssr/
+*.local
+
+# ===== Rust / Cargo =====
+src-tauri/target/
+
+# ===== Tauri generated =====
+src-tauri/gen/schemas/
+
+# ===== Editor directories =====
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===== OS =====
+Thumbs.db
+Desktop.ini

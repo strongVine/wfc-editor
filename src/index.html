@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WFC Rotation Map Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>WFC Rotation Map Editor</h1>
+    <div class="subtitle">
+      Симметрия по §7. Биты идут <code>3 2 1 0</code> слева направо.
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-mode="horizontal">Горизонталь</button>
+      <button class="tab" data-mode="vertical">Вертикаль</button>
+    </div>
+
+    <!-- ===== ГОРИЗОНТАЛЬНЫЙ РЕЖИМ ===== -->
+    <div class="section mode-pane" id="pane-horizontal">
+      <div class="actions">
+        <button id="h-open">Открыть…</button>
+        <button id="h-save" class="primary" disabled>Сохранить</button>
+        <button id="h-save-as" disabled>Сохранить как…</button>
+        <button id="h-add-state" disabled>+ состояние</button>
+        <button id="h-remove-state" disabled>× удалить</button>
+        <button id="h-collapse-all" disabled>Свернуть все</button>
+        <button id="h-expand-all" disabled>Развернуть все</button>
+        <span class="status" id="h-status">Файл не открыт</span>
+      </div>
+      <div class="legend">
+        Кликай по битам в нибле — зеркальный бит проставится автоматически.
+        <code>Ctrl+S</code> — сохранить.
+      </div>
+      <div id="h-matrix-container">
+        <div class="empty-hint">Нажми «Открыть…» чтобы загрузить файл матрицы.</div>
+      </div>
+    </div>
+
+    <!-- ===== ВЕРТИКАЛЬНЫЙ РЕЖИМ ===== -->
+    <div class="section mode-pane" id="pane-vertical" style="display:none">
+      <div class="actions">
+        <div class="dropdown">
+          <button id="v-upper-btn">Верхняя ▾</button>
+          <div class="dropdown-menu" id="v-upper-menu">
+            <button data-action="open">Открыть…</button>
+            <button data-action="save" disabled>Сохранить</button>
+            <button data-action="save-as" disabled>Сохранить как…</button>
+            <hr>
+            <button data-action="add-state" disabled>+ состояние</button>
+            <button data-action="remove-state" disabled>× удалить</button>
+          </div>
+        </div>
+
+        <div class="dropdown">
+          <button id="v-lower-btn">Нижняя ▾</button>
+          <div class="dropdown-menu" id="v-lower-menu">
+            <button data-action="open">Открыть…</button>
+            <button data-action="save" disabled>Сохранить</button>
+            <button data-action="save-as" disabled>Сохранить как…</button>
+            <hr>
+            <button data-action="add-state" disabled>+ состояние</button>
+            <button data-action="remove-state" disabled>× удалить</button>
+          </div>
+        </div>
+
+        <button id="v-collapse-all" disabled>Свернуть все</button>
+        <button id="v-expand-all" disabled>Развернуть все</button>
+        <span class="status" id="v-status">Файлы не открыты</span>
+      </div>
+      <div class="legend">
+        Верхняя матрица редактирует строку <code>Down</code> своих состояний (что под ней).
+        Нижняя — строку <code>Up</code> (что над ней). <code>Ctrl+S</code> — сохранить грязные.
+      </div>
+      <div id="v-matrix-container">
+        <div class="empty-hint">Открой верхний и нижний файлы матриц.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Порядок важен: main.js определяет window.WFC, остальные его расширяют -->
+  <script src="main.js"></script>
+  <script src="horizontal.js"></script>
+  <script src="vertical.js"></script>
+  <script>
+    // Bootstrap после того как все три файла отработали
+    WFC.setupTabs();
+    WFC.initHorizontal();
+    WFC.initVertical();
+  </script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+:root {
+  --bg-page: #1a1a1a;
+  --bg-surface: #242424;
+  --bg-elevated: #2d2d2d;
+  --bg-input: #1f1f1f;
+  --border: #3a3a3a;
+  --border-hover: #555;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a8a8a8;
+  --text-tertiary: #707070;
+  --accent: #6b5dd3;
+  --accent-hover: #7c6fe0;
+  --accent-soft: rgba(107, 93, 211, 0.15);
+  --info-border: #4a8ad4;
+  --danger: #d44a4a;
+  --success: #4ad48a;
+  --up-tint: #4a9d9d;
+  --down-tint: #c98a4a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 24px 60px;
+}
+
+h1 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 4px 0;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.subtitle code, .legend code {
+  background: var(--bg-input);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 11px;
+}
+
+/* ===== Табы ===== */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  height: 32px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: all 0.1s;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+.tab.active {
+  background: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* ===== Section ===== */
+.section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.legend {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+/* ===== Кнопки ===== */
+button {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+button:active:not(:disabled) { transform: translateY(1px); }
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+/* ===== Dropdown ===== */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 32px;
+  left: 0;
+  z-index: 100;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dropdown-menu.open {
+  display: block;
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+}
+
+.dropdown-menu button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.dropdown-menu hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 2px;
+}
+
+/* ===== Inputs ===== */
+input[type="text"] {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-family: inherit;
+  transition: border-color 0.1s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+input[type="text"].statename { width: 200px; }
+
+/* ===== Status ===== */
+.status {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-left: auto;
+  transition: color 0.2s;
+  font-family: 'SF Mono', Consolas, monospace;
+}
+
+.status.ok { color: var(--success); }
+.status.dirty { color: var(--accent-hover); }
+.status.bad { color: var(--danger); }
+
+.empty-hint {
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 13px;
+}
+
+/* ===== State header ===== */
+.stateheader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  user-select: none;
+}
+
+.stateheader:first-of-type {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.stateheader .chevron {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  color: var(--text-tertiary);
+  font-family: monospace;
+  font-size: 10px;
+  line-height: 12px;
+  text-align: center;
+  transition: transform 0.15s;
+  cursor: pointer;
+}
+
+.stateheader.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+.stateheader .state-summary {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: 'SF Mono', Consolas, monospace;
+  margin-left: auto;
+}
+
+.state-body {
+  overflow: hidden;
+}
+
+.state-body.collapsed {
+  display: none;
+}
+
+/* ===== Matrix table ===== */
+.scroll-wrap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+table.mtx {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 11px;
+}
+
+table.mtx th {
+  font-family: inherit;
+  font-weight: 500;
+  padding: 4px 4px 8px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 11px;
+  min-width: 60px;
+}
+
+table.mtx td { padding: 2px 3px; }
+
+table.mtx td.dir-label,
+table.mtx th.dir-label {
+  color: var(--text-tertiary);
+  padding-right: 8px;
+  text-align: right;
+  font-size: 10px;
+  min-width: 50px;
+}
+
+/* ===== Bits & nibbles ===== */
+.nibble {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px 5px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+}
+
+.bit {
+  width: 12px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.08s;
+}
+
+.bit:hover { border-color: var(--border-hover); }
+
+.bit.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.bit.mirror-flash {
+  box-shadow: 0 0 0 2px var(--info-border);
+}
+
+/* Подсветка нарушений симметрии (только до первой правки) */
+.bit.on.bad {
+  background: var(--danger);
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+.bit.missing {
+  border-color: var(--danger);
+  background: rgba(212, 74, 74, 0.18);
+}
+
+/* ===== Vertical mode: layer titles ===== */
+.matrix-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 16px 0 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border-left: 3px solid;
+}
+
+.matrix-title:first-child {
+  margin-top: 0;
+}
+
+.matrix-title.upper {
+  border-left-color: var(--up-tint);
+  color: var(--up-tint);
+  background: rgba(74, 157, 157, 0.08);
+}
+
+.matrix-title.lower {
+  border-left-color: var(--down-tint);
+  color: var(--down-tint);
+  background: rgba(201, 138, 74, 0.08);
+}
+
+.layer-empty {
+  color: var(--text-tertiary);
+  padding: 16px 12px;
+  font-size: 12px;
+  font-style: italic;
+}
