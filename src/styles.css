@@ -608,6 +608,28 @@ span.preview-glyph.sz-lg {
   gap: 2px;
 }
 
+/* Кликабельный глиф в боковой ячейке превью.
+   Outline вместо box-shadow — потому что глифы стоят впритык в стеке,
+   и outline не «съедает» рамку соседа при hover. На приглушённых
+   (серых) глифах при hover показываем менее обесцвеченную версию,
+   подсказывая что клик включит соединение. */
+.preview-glyph.preview-edit {
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  border-radius: 4px;
+  transition: transform 0.1s, outline-color 0.08s, opacity 0.08s, filter 0.08s;
+}
+
+.preview-cell .preview-glyph.preview-edit:hover {
+  outline-color: var(--accent);
+}
+
+.preview-glyph.preview-edit.dim:hover {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
 .preview-center {
   display: flex;
   flex-direction: column;
