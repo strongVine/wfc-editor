@@ -23,6 +23,13 @@
   let snap = null;
   let selectedIdx = 0;
 
+  // Сессионный фильтр видимости: индексы видимых состояний.
+  // Сбрасывается при открытии нового файла; при add/remove новые
+  // индексы автоматически включаются, удалённые — вычищаются.
+  let enabled = new Set();
+  let prevPath = null;
+  let prevLen = 0;
+
   function $(id) { return document.getElementById(id); }
 
   function setStatus(text) {
@@ -30,15 +37,48 @@
     if (el) el.textContent = text;
   }
 
+  function reconcileEnabled() {
+    if (!snap || !snap.states) {
+      enabled = new Set();
+      prevPath = null;
+      prevLen = 0;
+      return;
+    }
+    const n = snap.states.length;
+    if (snap.path !== prevPath) {
+      enabled = new Set();
+      for (let i = 0; i < n; i++) enabled.add(i);
+    } else {
+      if (n < prevLen) {
+        for (const i of [...enabled]) if (i >= n) enabled.delete(i);
+      }
+      if (n > prevLen) {
+        for (let i = prevLen; i < n; i++) enabled.add(i);
+      }
+    }
+    prevPath = snap.path;
+    prevLen = n;
+
+    if (enabled.size > 0 && !enabled.has(selectedIdx)) {
+      selectedIdx = Math.min(...enabled);
+    }
+  }
+
   // ----------------------------------------------------------------
-  // Селектор состояний (ряд кликабельных меток)
+  // Селектор состояний: два ряда — выбор центрального A (radio)
+  // и фильтр видимости (checkbox).
   // ----------------------------------------------------------------
   function renderSelector() {
     const root = $('p-selector');
     root.innerHTML = '';
     if (!snap || !snap.states || snap.states.length === 0) return;
 
+    // Ряд 1: выбор центрального A. Скрываем выключенные — они полностью
+    // исчезают из превью.
+    const radioRow = document.createElement('div');
+    radioRow.className = 'preview-radio';
     snap.states.forEach((s, idx) => {
+      if (!enabled.has(idx)) return;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'preview-pick' + (idx === selectedIdx ? ' selected' : '');
@@ -52,8 +92,42 @@
         selectedIdx = idx;
         renderPreview();
       });
-      root.appendChild(btn);
+      radioRow.appendChild(btn);
     });
+    root.appendChild(radioRow);
+
+    // Ряд 2: чекбоксы видимости. Показываем ВСЕ состояния (иначе
+    // выключенные нельзя вернуть). Off-плитки приглушены.
+    const visRow = document.createElement('div');
+    visRow.className = 'preview-visibility';
+    const lbl = document.createElement('span');
+    lbl.className = 'preview-visibility-label';
+    lbl.textContent = 'Видимость:';
+    visRow.appendChild(lbl);
+    snap.states.forEach((s, idx) => {
+      const on = enabled.has(idx);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'preview-check' + (on ? '' : ' off');
+      btn.title = s.name + (on ? ' — показывать' : ' — скрыто');
+      btn.appendChild(W.makeStateGlyph({
+        jsonPath: snap.path,
+        name: s.name,
+        sizeClass: 'sz-md',
+      }));
+      btn.addEventListener('click', () => {
+        if (enabled.has(idx)) enabled.delete(idx);
+        else enabled.add(idx);
+        // Если выключили текущий A — переключимся на первый видимый
+        // (а если включили — selectedIdx остаётся валидным).
+        if (enabled.size > 0 && !enabled.has(selectedIdx)) {
+          selectedIdx = Math.min(...enabled);
+        }
+        renderPreview();
+      });
+      visRow.appendChild(btn);
+    });
+    root.appendChild(visRow);
   }
 
   // ----------------------------------------------------------------
@@ -114,6 +188,7 @@
     const cells = document.createElement('div');
     cells.className = 'preview-side-cells';
     for (let B = 0; B < snap.states.length; B++) {
+      if (!enabled.has(B)) continue;
       cells.appendChild(renderCell(A, side.d, B));
     }
     panel.appendChild(cells);
@@ -145,12 +220,21 @@
 
     if (!snap || !snap.states || snap.states.length === 0) {
       empty.style.display = '';
+      empty.textContent = 'Открой файл во вкладке «Горизонталь».';
       grid.style.display = 'none';
       setStatus('Файл не открыт');
       return;
     }
 
-    if (selectedIdx >= snap.states.length) selectedIdx = 0;
+    if (enabled.size === 0) {
+      empty.style.display = '';
+      empty.textContent = 'Все состояния скрыты — включи хотя бы одно в ряду «Видимость».';
+      grid.style.display = 'none';
+      setStatus(W.fileName(snap.path) + ' · нет видимых состояний');
+      return;
+    }
+
+    if (!enabled.has(selectedIdx)) selectedIdx = Math.min(...enabled);
 
     empty.style.display = 'none';
     grid.style.display = '';
@@ -171,6 +255,7 @@
     snap = s;
     if (!s || !s.states) selectedIdx = 0;
     else if (selectedIdx >= s.states.length) selectedIdx = 0;
+    reconcileEnabled();
     renderPreview();
   }
 
@@ -182,6 +267,7 @@
   // Активация вкладки → принудительный re-render: пока превью было
   // скрыто, в горизонтали могли менять имена/биты (по ссылке).
   W.previewOnTabActivate = function () {
+    reconcileEnabled();
     renderPreview();
   };
 })();
