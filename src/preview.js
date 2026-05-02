@@ -24,8 +24,9 @@
   let selectedIdx = 0;
 
   // Сессионный фильтр видимости: индексы видимых состояний.
-  // Сбрасывается при открытии нового файла; при add/remove новые
-  // индексы автоматически включаются, удалённые — вычищаются.
+  // Сбрасывается при открытии нового файла; по умолчанию все
+  // галочки сняты — пользователь сам решает, что показать. При
+  // remove удалённые индексы вычищаются.
   let enabled = new Set();
   let prevPath = null;
   let prevLen = 0;
@@ -47,14 +48,8 @@
     const n = snap.states.length;
     if (snap.path !== prevPath) {
       enabled = new Set();
-      for (let i = 0; i < n; i++) enabled.add(i);
-    } else {
-      if (n < prevLen) {
-        for (const i of [...enabled]) if (i >= n) enabled.delete(i);
-      }
-      if (n > prevLen) {
-        for (let i = prevLen; i < n; i++) enabled.add(i);
-      }
+    } else if (n < prevLen) {
+      for (const i of [...enabled]) if (i >= n) enabled.delete(i);
     }
     prevPath = snap.path;
     prevLen = n;
@@ -63,9 +58,10 @@
   // ----------------------------------------------------------------
   // Селектор состояний: два независимых ряда.
   //   Ряд 1 — выбор центрального A. Всегда все N плиток.
-  //   Ряд 2 — фильтр для боковых сторон. Off-плитка → состояние
-  //           рисуется приглушённым в боковых ячейках, как и
-  //           несвязные. Ряд 1 и центр не трогает.
+  //   Ряд 2 — фильтр для боковых сторон. По умолчанию все галочки
+  //           сняты; включённые состояния рисуются в боковых
+  //           ячейках, выключенные — не отображаются вовсе.
+  //           Ряд 1 и центр не трогает.
   // ----------------------------------------------------------------
   function renderSelector() {
     const root = $('p-selector');
@@ -103,7 +99,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'preview-check' + (on ? '' : ' off');
-      btn.title = s.name + (on ? ' — показывать на сторонах' : ' — приглушить на сторонах');
+      btn.title = s.name + (on ? ' — показывать на сторонах' : ' — скрыть со сторон');
       btn.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
         name: s.name,
@@ -121,8 +117,9 @@
 
   // ----------------------------------------------------------------
   // Одна ячейка стороны: всегда 4 копии состояния B (по одной на
-  // каждый поворот r∈{0..3}). Копия цветная, если bitVal(nibble,r)===1
-  // и B включён в фильтре; иначе — приглушённая (серая).
+  // каждый поворот r∈{0..3}). Копия цветная, если bitVal(nibble,r)===1;
+  // иначе — приглушённая (серая). Состояния, не включённые в фильтр,
+  // в эту функцию не попадают — они отсеиваются на уровне выше.
   // ----------------------------------------------------------------
   function renderCell(A, d, B) {
     const cell = document.createElement('div');
@@ -130,14 +127,13 @@
 
     const Bstate = snap.states[B];
     const nibble = snap.states[A].M[d][B];
-    const filteredOut = !enabled.has(B);
 
     const stack = document.createElement('div');
     stack.className = 'preview-glyph-stack';
 
     const activeRotations = [];
     for (let r = 0; r < W.BITS; r++) {
-      const on = !filteredOut && W.bitVal(nibble, r);
+      const on = W.bitVal(nibble, r);
       if (on) activeRotations.push(r);
       stack.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
@@ -150,7 +146,7 @@
 
     if (activeRotations.length === 0) {
       cell.classList.add('dim');
-      cell.title = Bstate.name + (filteredOut ? ' — скрыто фильтром' : ' — нет соединения');
+      cell.title = Bstate.name + ' — нет соединения';
     } else {
       cell.title = Bstate.name + ' — повороты: ' + activeRotations.map(r => (r * 90) + '°').join(', ');
     }
@@ -172,6 +168,7 @@
     const cells = document.createElement('div');
     cells.className = 'preview-side-cells';
     for (let B = 0; B < snap.states.length; B++) {
+      if (!enabled.has(B)) continue;
       cells.appendChild(renderCell(A, side.d, B));
     }
     panel.appendChild(cells);
