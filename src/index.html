@@ -17,6 +17,7 @@
       <button class="tab active" data-mode="horizontal">Горизонталь</button>
       <button class="tab" data-mode="vertical">Вертикаль</button>
       <button class="tab" data-mode="preview">Превью</button>
+      <button class="tab" data-mode="vertical-preview">Превью верт.</button>
     </div>
 
     <!-- ===== ГОРИЗОНТАЛЬНЫЙ РЕЖИМ ===== -->
@@ -94,6 +95,22 @@
       <div id="p-selector" class="preview-selector"></div>
       <div id="p-grid" class="preview-grid"></div>
     </div>
+
+    <!-- ===== ПРЕВЬЮ ВЕРТ. (read-only, два файла из «Вертикали») ===== -->
+    <div class="section mode-pane" id="pane-vertical-preview" style="display:none">
+      <div class="actions">
+        <span class="status" id="pv-status">Файлы не открыты</span>
+      </div>
+      <div class="legend">
+        Выбери слой-центр (↑ верх / ↓ низ) и состояние в нём; на противоположной
+        стороне рисуются парные плитки в 4 поворотах. Клик по повороту переключает
+        соединение — зеркальный бит в парном слое проставляется атомарно.
+        <code>Ctrl+S</code> — сохранить грязные слои.
+      </div>
+      <div id="pv-empty" class="empty-hint">Открой оба файла во вкладке «Вертикаль».</div>
+      <div id="pv-selector" class="preview-selector"></div>
+      <div id="pv-stack" class="preview-vstack"></div>
+    </div>
   </div>
 
   <!-- Порядок важен: main.js определяет window.WFC, остальные его расширяют -->
@@ -101,16 +118,19 @@
   <script src="horizontal.js"></script>
   <script src="vertical.js"></script>
   <script src="preview.js"></script>
+  <script src="vertical_preview.js"></script>
   <script>
-    // Bootstrap после того как все четыре файла отработали
+    // Bootstrap после того как все пять файлов отработали
     WFC.setupTabs({
       onActivate: (mode) => {
         if (mode === 'preview') WFC.previewOnTabActivate();
+        if (mode === 'vertical-preview') WFC.verticalPreviewOnTabActivate();
       },
     });
     WFC.initHorizontal();
     WFC.initVertical();
     WFC.initPreview();
+    WFC.initVerticalPreview();
   </script>
 </body>
 </html>

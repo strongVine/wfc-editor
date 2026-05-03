@@ -647,3 +647,62 @@ span.preview-glyph.sz-lg {
   color: var(--text-primary);
   font-family: 'SF Mono', Consolas, monospace;
 }
+
+/* ===== Превью верт.: вертикальная стопка из двух уровней =====
+   Центр и одна «сторона» (Down или Up в зависимости от выбора). Чтобы
+   физическая ориентация читалась с первого взгляда, у тоггла «↑/↓» и у
+   центральной плитки используется тот же оттенок, что у заголовков
+   слоёв в самой вертикали (up-tint / down-tint). */
+.preview-vstack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 8px;
+}
+
+.preview-vside {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  padding: 8px 10px;
+  min-width: 120px;
+  max-width: 100%;
+}
+
+.preview-vside.down {
+  border-left: 3px solid var(--down-tint);
+}
+
+.preview-vside.up {
+  border-left: 3px solid var(--up-tint);
+}
+
+.preview-side-hint {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 2px;
+}
+
+.preview-pick.pv-role-upper.selected {
+  border-color: var(--up-tint);
+  background: rgba(74, 157, 157, 0.18);
+  box-shadow: 0 0 0 1px var(--up-tint);
+}
+
+.preview-pick.pv-role-lower.selected {
+  border-color: var(--down-tint);
+  background: rgba(201, 138, 74, 0.18);
+  box-shadow: 0 0 0 1px var(--down-tint);
+}
+
+.preview-center.pv-role-upper {
+  border-color: var(--up-tint);
+  background: rgba(74, 157, 157, 0.14);
+}
+
+.preview-center.pv-role-lower {
+  border-color: var(--down-tint);
+  background: rgba(201, 138, 74, 0.14);
+}

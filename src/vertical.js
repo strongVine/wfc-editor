@@ -31,6 +31,16 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Структурный snapshot для read-only потребителей (вкладка «Превью верт.»).
+  // Биты внутри states видны по ссылке — отдельный re-publish после правки бита
+  // не нужен; вызывается только при open / save-as path / add / remove.
+  function publishSnapshot() {
+    W.verticalBus.publish({
+      upper: { path: upper.currentPath, states: upper.states, mask: upper.completenessMask },
+      lower: { path: lower.currentPath, states: lower.states, mask: lower.completenessMask },
+    });
+  }
+
   // ============================================================
   // Симметрия
   // ============================================================
@@ -286,6 +296,7 @@
       updateStatus();
       updateButtonsState();
       renderMatrix();
+      publishSnapshot();
     } catch (err) {
       console.error(err);
       setStatus('Ошибка: ' + err.message, 'bad');
@@ -312,7 +323,8 @@
       if (!path) return;
       const mask = layer.completenessMask || W.makeEmptyCompletenessMask();
       await W.tauri.writeTextFile(path, W.serializeProjectJson(layer.states, mask));
-      if (path !== layer.currentPath) {
+      const pathChanged = path !== layer.currentPath;
+      if (pathChanged) {
         if (layer.currentPath) W.releaseIconCache(layer.currentPath);
         await W.scanIconFolder(path);
       }
@@ -320,6 +332,7 @@
       layer.completenessMask = mask;
       setDirty(layer, false);
       renderMatrix();
+      if (pathChanged) publishSnapshot();
     } catch (err) {
       console.error(err);
       setStatus('Ошибка сохранения: ' + err.message, 'bad');
@@ -342,6 +355,7 @@
     setDirty(layer, true);
     updateButtonsState();
     renderMatrix();
+    publishSnapshot();
   }
 
   function removeLastState(layer) {
@@ -352,6 +366,7 @@
     setDirty(layer, true);
     updateButtonsState();
     renderMatrix();
+    publishSnapshot();
   }
 
   function updateButtonsState() {
@@ -402,6 +417,29 @@
   }
 
   // ============================================================
+  // Внешний API для других вкладок
+  // ------------------------------------------------------------
+  // Вкладка «Превью верт.» редактирует те же два файла через эту точку.
+  // Переиспользуется существующий путь правки бита: симметрия,
+  // dirty-флаг, очистка валидации и re-render вертикальной таблицы
+  // делаются ровно так же, как при клике в самом вертикальном режиме.
+  // ============================================================
+  W.verticalApi = {
+    editBit(role, A, B, r) {
+      const layer = role === 'upper' ? upper : (role === 'lower' ? lower : null);
+      if (!layer) return false;
+      if (layer.states.length === 0) return false;
+      const peerLayer = peer(layer);
+      if (peerLayer.states.length === 0) return false;
+      if (A < 0 || A >= layer.states.length) return false;
+      if (B < 0 || B >= peerLayer.states.length) return false;
+      if (r < 0 || r >= W.BITS) return false;
+      onBitClick(layer, A, B, r);
+      return true;
+    },
+  };
+
+  // ============================================================
   // Init
   // ============================================================
   W.initVertical = function () {
@@ -426,8 +464,11 @@
       renderMatrix();
     });
 
+    // Ctrl+S работает и в вертикали, и в превью верт. — превью редактирует
+    // те же два файла, что и вертикаль, поэтому отдельный хоткей не нужен.
     document.addEventListener('keydown', (e) => {
-      if (W.getCurrentMode() !== 'vertical') return;
+      const mode = W.getCurrentMode();
+      if (mode !== 'vertical' && mode !== 'vertical-preview') return;
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         saveAllDirty();

@@ -381,6 +381,17 @@
     };
   })();
 
+  // Аналогично для вертикального режима. snap = { upper:{path,states,mask}, lower:{...} }.
+  WFC.verticalBus = (function () {
+    const subs = new Set();
+    let snap = null;
+    return {
+      publish(s) { snap = s; subs.forEach(cb => { try { cb(snap); } catch (e) { console.error(e); } }); },
+      get() { return snap; },
+      subscribe(cb) { subs.add(cb); return () => subs.delete(cb); },
+    };
+  })();
+
   // ============================================================
   // Текущий режим (для горячих клавиш)
   // ============================================================
@@ -394,6 +405,7 @@
       horizontal: document.getElementById('pane-horizontal'),
       vertical: document.getElementById('pane-vertical'),
       preview: document.getElementById('pane-preview'),
+      'vertical-preview': document.getElementById('pane-vertical-preview'),
     };
 
     tabs.forEach(tab => {
