@@ -1,13 +1,13 @@
 // ============================================================
-// vertical_preview.js — режим «Превью верт.».
-// Визуализация и редактирование оси Up↔Down между двумя слоями.
-// Пользователь выбирает слой-центр (upper / lower) и состояние A в нём;
-// на физически правильной стороне (под центром если он сверху, над —
-// если снизу) рисуется ряд парных плиток B в 4 поворотах. Клик по
-// любому повороту переключает свой бит в матрице центрального слоя
-// через W.verticalApi.editBit; зеркальный бит в парном слое §7
-// проставляется автоматически — это та же кнопка-в-нибл, просто
-// визуализированная как стопка двух уровней.
+// vertical_visual.js — режим «Верт. визуал».
+// Визуальная форма вертикального редактора. Редактирование оси Up↔Down
+// между двумя слоями: пользователь выбирает слой-центр (upper / lower)
+// и состояние A в нём; на физически правильной стороне (под центром
+// если он сверху, над — если снизу) рисуется ряд парных плиток B в
+// 4 поворотах. Клик по любому повороту переключает свой бит в матрице
+// центрального слоя через W.verticalApi.editBit; зеркальный бит в
+// парном слое §7 проставляется автоматически — это та же кнопка-в-нибл,
+// просто визуализированная как стопка двух уровней.
 //
 // Файлы берутся из вкладки «Вертикаль» через WFC.verticalBus.
 // ============================================================
@@ -31,7 +31,7 @@
   function $(id) { return document.getElementById(id); }
 
   function setStatus(text) {
-    const el = $('pv-status');
+    const el = $('vv-status');
     if (el) el.textContent = text;
   }
 
@@ -86,28 +86,28 @@
   // (выбор A), 3) ряд видимости парного слоя.
   // ----------------------------------------------------------------
   function renderSelector() {
-    const root = $('pv-selector');
+    const root = $('vv-selector');
     root.innerHTML = '';
     if (!bothOpen()) return;
 
     const ctx = getCenterPeer();
 
     const togRow = document.createElement('div');
-    togRow.className = 'preview-radio';
+    togRow.className = 'vis-radio';
     const togLbl = document.createElement('span');
-    togLbl.className = 'preview-visibility-label';
+    togLbl.className = 'vis-visibility-label';
     togLbl.textContent = 'Центр:';
     togRow.appendChild(togLbl);
     [['upper', '↑ верх'], ['lower', '↓ низ']].forEach(([role, text]) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'preview-pick pv-role-' + role + (centerRole === role ? ' selected' : '');
+      btn.className = 'vis-pick vis-role-' + role + (centerRole === role ? ' selected' : '');
       btn.textContent = text;
       btn.addEventListener('click', () => {
         if (centerRole !== role) {
           centerRole = role;
           selectedIdx = 0;
-          renderPreview();
+          renderVisual();
         }
       });
       togRow.appendChild(btn);
@@ -115,11 +115,11 @@
     root.appendChild(togRow);
 
     const radioRow = document.createElement('div');
-    radioRow.className = 'preview-radio';
+    radioRow.className = 'vis-radio';
     ctx.centerLayer.states.forEach((s, idx) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'preview-pick' + (idx === selectedIdx ? ' selected' : '');
+      btn.className = 'vis-pick' + (idx === selectedIdx ? ' selected' : '');
       btn.title = s.name;
       btn.appendChild(W.makeStateGlyph({
         jsonPath: ctx.centerLayer.path,
@@ -128,23 +128,23 @@
       }));
       btn.addEventListener('click', () => {
         selectedIdx = idx;
-        renderPreview();
+        renderVisual();
       });
       radioRow.appendChild(btn);
     });
     root.appendChild(radioRow);
 
     const visRow = document.createElement('div');
-    visRow.className = 'preview-visibility';
+    visRow.className = 'vis-visibility';
     const visLbl = document.createElement('span');
-    visLbl.className = 'preview-visibility-label';
+    visLbl.className = 'vis-visibility-label';
     visLbl.textContent = ctx.isCenterUpper ? 'Парный (низ):' : 'Парный (верх):';
     visRow.appendChild(visLbl);
     ctx.peerLayer.states.forEach((s, idx) => {
       const on = ctx.visSet.has(idx);
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'preview-check' + (on ? '' : ' off');
+      btn.className = 'vis-check' + (on ? '' : ' off');
       btn.title = s.name + (on ? ' — показывать' : ' — скрыть');
       btn.appendChild(W.makeStateGlyph({
         jsonPath: ctx.peerLayer.path,
@@ -154,7 +154,7 @@
       btn.addEventListener('click', () => {
         if (ctx.visSet.has(idx)) ctx.visSet.delete(idx);
         else ctx.visSet.add(idx);
-        renderPreview();
+        renderVisual();
       });
       visRow.appendChild(btn);
     });
@@ -169,13 +169,13 @@
   function renderCell(A, B) {
     const ctx = getCenterPeer();
     const cell = document.createElement('div');
-    cell.className = 'preview-cell';
+    cell.className = 'vis-cell';
 
     const Bstate = ctx.peerLayer.states[B];
     const nibble = ctx.centerLayer.states[A].M[ctx.d][B];
 
     const stack = document.createElement('div');
-    stack.className = 'preview-glyph-stack';
+    stack.className = 'vis-glyph-stack';
 
     let active = 0;
     for (let r = 0; r < W.BITS; r++) {
@@ -187,7 +187,7 @@
         rotation: r,
         dim: !on,
         sizeClass: 'sz-sm',
-        extraClass: 'preview-edit',
+        extraClass: 'vis-edit',
       });
       glyph.dataset.a = A;
       glyph.dataset.b = B;
@@ -208,21 +208,21 @@
   function onGlyphClick(A, B, r) {
     if (!W.verticalApi || typeof W.verticalApi.editBit !== 'function') return;
     const ok = W.verticalApi.editBit(centerRole, A, B, r);
-    if (ok) renderPreview();
+    if (ok) renderVisual();
   }
 
   function renderSide(A) {
     const ctx = getCenterPeer();
     const panel = document.createElement('div');
-    panel.className = 'preview-side preview-vside ' + (ctx.isCenterUpper ? 'down' : 'up');
+    panel.className = 'vis-side vis-vside ' + (ctx.isCenterUpper ? 'down' : 'up');
 
     const lbl = document.createElement('div');
-    lbl.className = 'preview-side-label';
+    lbl.className = 'vis-side-label';
     lbl.textContent = ctx.isCenterUpper ? 'Down — что под' : 'Up — что над';
     panel.appendChild(lbl);
 
     const cells = document.createElement('div');
-    cells.className = 'preview-side-cells';
+    cells.className = 'vis-side-cells';
     let any = false;
     for (let B = 0; B < ctx.peerLayer.states.length; B++) {
       if (!ctx.visSet.has(B)) continue;
@@ -231,7 +231,7 @@
     }
     if (!any) {
       const hint = document.createElement('div');
-      hint.className = 'preview-side-hint';
+      hint.className = 'vis-side-hint';
       hint.textContent = 'Включи галочки парного слоя выше.';
       cells.appendChild(hint);
     }
@@ -242,24 +242,24 @@
   function renderCenter(A) {
     const ctx = getCenterPeer();
     const center = document.createElement('div');
-    center.className = 'preview-center pv-role-' + centerRole;
+    center.className = 'vis-center vis-role-' + centerRole;
     center.appendChild(W.makeStateGlyph({
       jsonPath: ctx.centerLayer.path,
       name: ctx.centerLayer.states[A].name,
       sizeClass: 'sz-lg',
     }));
     const nm = document.createElement('div');
-    nm.className = 'preview-center-name';
+    nm.className = 'vis-center-name';
     nm.textContent = ctx.centerLayer.states[A].name;
     center.appendChild(nm);
     return center;
   }
 
-  function renderPreview() {
+  function renderVisual() {
     renderSelector();
 
-    const stack = $('pv-stack');
-    const empty = $('pv-empty');
+    const stack = $('vv-stack');
+    const empty = $('vv-empty');
     stack.innerHTML = '';
 
     if (!snap || !snap.upper || !snap.lower || !snap.upper.path || !snap.lower.path) {
@@ -307,18 +307,18 @@
       selectedIdx = 0;
     }
     reconcileEnabled();
-    renderPreview();
+    renderVisual();
   }
 
-  W.initVerticalPreview = function () {
+  W.initVerticalVisual = function () {
     W.verticalBus.subscribe(onSnapshot);
     onSnapshot(W.verticalBus.get());
   };
 
-  // Активация вкладки → принудительный re-render: пока превью верт. было
-  // скрыто, в самой вертикали могли менять имена/биты (по ссылке).
-  W.verticalPreviewOnTabActivate = function () {
+  // Активация вкладки → принудительный re-render: пока вкладка была
+  // скрыта, в самой вертикали могли менять имена/биты (по ссылке).
+  W.verticalVisualOnTabActivate = function () {
     reconcileEnabled();
-    renderPreview();
+    renderVisual();
   };
 })();

@@ -1,8 +1,8 @@
 // ============================================================
-// preview.js — режим «Превью».
-// Визуализация и редактирование. Пользователь выбирает состояние A,
-// программа рисует крест из 4 горизонтальных сторон. Для каждой
-// стороны d показываются все N состояний; для каждого B рисуются
+// horizontal_visual.js — режим «Гор. визуал».
+// Визуальная форма горизонтального редактора. Пользователь выбирает
+// состояние A, программа рисует крест из 4 горизонтальных сторон. Для
+// каждой стороны d показываются все N состояний; для каждого B рисуются
 // все 4 поворота r∈{0..3} — цветной если bitVal(M[A][d][B], r)===1,
 // иначе приглушённый. Клик по любому из 4 глифов в боковой ячейке
 // переключает соответствующий бит — редактирование делегируется
@@ -37,7 +37,7 @@
   function $(id) { return document.getElementById(id); }
 
   function setStatus(text) {
-    const el = $('p-status');
+    const el = $('hv-status');
     if (el) el.textContent = text;
   }
 
@@ -67,16 +67,16 @@
   //           Ряд 1 и центр не трогает.
   // ----------------------------------------------------------------
   function renderSelector() {
-    const root = $('p-selector');
+    const root = $('hv-selector');
     root.innerHTML = '';
     if (!snap || !snap.states || snap.states.length === 0) return;
 
     const radioRow = document.createElement('div');
-    radioRow.className = 'preview-radio';
+    radioRow.className = 'vis-radio';
     snap.states.forEach((s, idx) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'preview-pick' + (idx === selectedIdx ? ' selected' : '');
+      btn.className = 'vis-pick' + (idx === selectedIdx ? ' selected' : '');
       btn.title = s.name;
       btn.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
@@ -85,23 +85,23 @@
       }));
       btn.addEventListener('click', () => {
         selectedIdx = idx;
-        renderPreview();
+        renderVisual();
       });
       radioRow.appendChild(btn);
     });
     root.appendChild(radioRow);
 
     const visRow = document.createElement('div');
-    visRow.className = 'preview-visibility';
+    visRow.className = 'vis-visibility';
     const lbl = document.createElement('span');
-    lbl.className = 'preview-visibility-label';
+    lbl.className = 'vis-visibility-label';
     lbl.textContent = 'На сторонах:';
     visRow.appendChild(lbl);
     snap.states.forEach((s, idx) => {
       const on = enabled.has(idx);
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'preview-check' + (on ? '' : ' off');
+      btn.className = 'vis-check' + (on ? '' : ' off');
       btn.title = s.name + (on ? ' — показывать на сторонах' : ' — скрыть со сторон');
       btn.appendChild(W.makeStateGlyph({
         jsonPath: snap.path,
@@ -111,7 +111,7 @@
       btn.addEventListener('click', () => {
         if (enabled.has(idx)) enabled.delete(idx);
         else enabled.add(idx);
-        renderPreview();
+        renderVisual();
       });
       visRow.appendChild(btn);
     });
@@ -130,13 +130,13 @@
   // ----------------------------------------------------------------
   function renderCell(A, d, B) {
     const cell = document.createElement('div');
-    cell.className = 'preview-cell';
+    cell.className = 'vis-cell';
 
     const Bstate = snap.states[B];
     const nibble = snap.states[A].M[d][B];
 
     const stack = document.createElement('div');
-    stack.className = 'preview-glyph-stack';
+    stack.className = 'vis-glyph-stack';
 
     const activeRotations = [];
     for (let r = 0; r < W.BITS; r++) {
@@ -148,7 +148,7 @@
         rotation: r,
         dim: !on,
         sizeClass: 'sz-sm',
-        extraClass: 'preview-edit',
+        extraClass: 'vis-edit',
       });
       glyph.dataset.a = A;
       glyph.dataset.d = d;
@@ -173,21 +173,21 @@
   function onGlyphClick(A, d, B, r) {
     if (!W.horizontalApi || typeof W.horizontalApi.editBit !== 'function') return;
     const ok = W.horizontalApi.editBit(A, d, B, r);
-    if (ok) renderPreview();
+    if (ok) renderVisual();
   }
 
   function renderSidePanel(A, side) {
     const panel = document.createElement('div');
-    panel.className = 'preview-side ' + side.area;
+    panel.className = 'vis-side ' + side.area;
     panel.style.gridArea = side.area;
 
     const lbl = document.createElement('div');
-    lbl.className = 'preview-side-label';
+    lbl.className = 'vis-side-label';
     lbl.textContent = side.label;
     panel.appendChild(lbl);
 
     const cells = document.createElement('div');
-    cells.className = 'preview-side-cells';
+    cells.className = 'vis-side-cells';
     for (let B = 0; B < snap.states.length; B++) {
       if (!enabled.has(B)) continue;
       cells.appendChild(renderCell(A, side.d, B));
@@ -198,7 +198,7 @@
 
   function renderCenter(A) {
     const center = document.createElement('div');
-    center.className = 'preview-center';
+    center.className = 'vis-center';
     center.style.gridArea = 'center';
     center.appendChild(W.makeStateGlyph({
       jsonPath: snap.path,
@@ -206,17 +206,17 @@
       sizeClass: 'sz-lg',
     }));
     const nm = document.createElement('div');
-    nm.className = 'preview-center-name';
+    nm.className = 'vis-center-name';
     nm.textContent = snap.states[A].name;
     center.appendChild(nm);
     return center;
   }
 
-  function renderPreview() {
+  function renderVisual() {
     renderSelector();
 
-    const grid = $('p-grid');
-    const empty = $('p-empty');
+    const grid = $('hv-grid');
+    const empty = $('hv-empty');
     grid.innerHTML = '';
 
     if (!snap || !snap.states || snap.states.length === 0) {
@@ -247,18 +247,18 @@
     if (!s || !s.states) selectedIdx = 0;
     else if (selectedIdx >= s.states.length) selectedIdx = 0;
     reconcileEnabled();
-    renderPreview();
+    renderVisual();
   }
 
-  W.initPreview = function () {
+  W.initHorizontalVisual = function () {
     W.fileBus.subscribe(onSnapshot);
     onSnapshot(W.fileBus.get());
   };
 
-  // Активация вкладки → принудительный re-render: пока превью было
-  // скрыто, в горизонтали могли менять имена/биты (по ссылке).
-  W.previewOnTabActivate = function () {
+  // Активация вкладки → принудительный re-render: пока вкладка была
+  // скрыта, в горизонтали могли менять имена/биты (по ссылке).
+  W.horizontalVisualOnTabActivate = function () {
     reconcileEnabled();
-    renderPreview();
+    renderVisual();
   };
 })();
