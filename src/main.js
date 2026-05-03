@@ -301,7 +301,7 @@
 
   // ------------------------------------------------------------
   // Низкоуровневый билд-блок: иконка состояния (или текстовый фолбэк).
-  // Используется и в makeStateLabel, и во вкладке «Превью».
+  // Используется и в makeStateLabel, и в визуальных вкладках.
   //   rotation: 0..3 — вращение на r·90° через CSS
   //   dim: bool — приглушённое отображение (нет соединения)
   //   sizeClass: 'sz-sm' | 'sz-md' | 'sz-lg' (опционально)
@@ -311,7 +311,7 @@
     const url = WFC.getIconUrl(jsonPath, name);
     const r = ((rotation | 0) % 4 + 4) % 4;
 
-    const cls = ['preview-glyph', 'rot-' + r];
+    const cls = ['tile-glyph', 'rot-' + r];
     if (dim) cls.push('dim');
     if (sizeClass) cls.push(sizeClass);
     if (extraClass) cls.push(extraClass);
@@ -366,7 +366,7 @@
   };
 
   // ============================================================
-  // Шина данных файла (для read-only потребителей вроде «Превью»)
+  // Шина данных файла (для потребителей вроде «Гор. визуал»)
   // states пробрасывается по ссылке — мутации видны без re-publish.
   // publish() нужен для структурных событий (open / save-as path /
   // add / remove state).
@@ -404,8 +404,8 @@
     const panes = {
       horizontal: document.getElementById('pane-horizontal'),
       vertical: document.getElementById('pane-vertical'),
-      preview: document.getElementById('pane-preview'),
-      'vertical-preview': document.getElementById('pane-vertical-preview'),
+      'horizontal-visual': document.getElementById('pane-horizontal-visual'),
+      'vertical-visual': document.getElementById('pane-vertical-visual'),
     };
 
     tabs.forEach(tab => {
